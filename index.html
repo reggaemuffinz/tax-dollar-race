@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Race: Where Do Our Tax Dollars Go?</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1d2433;--mu:#5d667a;--bd:#d5d9e4;--ac:#2f5bea;--ok:#1f9d55;--okbg:#e3f6ea;--bad:#d64545;--sel:#fff3c4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--card:#1c212c;--tx:#e8ebf3;--mu:#9aa3b8;--bd:#363d4e;--ac:#7c9bff;--ok:#4cd08a;--okbg:#17372a;--bad:#ff7b7b;--sel:#4a4220}}
+:root[data-theme="dark"]{--bg:#12151c;--card:#1c212c;--tx:#e8ebf3;--mu:#9aa3b8;--bd:#363d4e;--ac:#7c9bff;--ok:#4cd08a;--okbg:#17372a;--bad:#ff7b7b;--sel:#4a4220}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:14px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--mu);margin:0 0 10px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.steps{display:flex;gap:6px}
+.step{padding:5px 12px;border-radius:99px;border:1px solid var(--bd);background:var(--card);color:var(--mu);font-weight:600}
+.step.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.step.done{color:var(--ok);border-color:var(--ok)}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:6px 12px;border-radius:8px;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}
+.timer{font:600 18px ui-monospace,Menlo,monospace;min-width:56px}
+.task{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+#msg{min-height:22px;font-weight:600;margin:4px 0}
+.tray{display:flex;flex-wrap:wrap;gap:6px;background:var(--card);border:2px dashed var(--bd);border-radius:10px;padding:8px;min-height:48px;max-height:210px;overflow:auto;margin-bottom:12px}
+.chip{background:var(--card);border:1px solid var(--ac);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:14px;text-align:left}
+.chip.sel{background:var(--sel);outline:2px solid var(--ac)}
+.chip.lock{border-color:var(--ok);background:var(--okbg);cursor:default}
+.chip.bad{animation:sh .4s;border-color:var(--bad)}
+@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.wrap{overflow-x:auto}
+.board{min-width:640px;display:grid;gap:6px}
+.row{display:grid;gap:6px;grid-template-columns:70px 1.1fr 2fr 2fr}
+.row.r1{grid-template-columns:70px 1fr}.row.r2{grid-template-columns:70px 1.1fr 2fr}
+.cell{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:5px;min-height:44px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.cell.cents{justify-content:center;font-weight:800;font-size:17px;color:var(--ac)}
+.cell.act{border:2px dashed var(--ac);cursor:pointer}
+.cell.act:hover{background:var(--sel)}
+.hd{font-size:12px;color:var(--mu);font-weight:700;text-transform:uppercase;padding:0 4px}
+.win{background:var(--okbg);border:1px solid var(--ok);border-radius:10px;padding:12px 14px;margin:12px 0}
+.win ul{margin:6px 0 10px 18px;padding:0}
+.hide{display:none}
+</style></head><body>
+<h1>🏁 Race: Where Do Our Tax Dollars Go?</h1>
+<p class="sub">Out of every $1 in federal taxes, how many cents go to each category? Tap a card, then tap the spot where it belongs. Matches lock in and carry into the next round.</p>
+
+<div class="bar">
+  <div class="steps"><span class="step" id="s1">Round 1</span><span class="step" id="s2">Round 2</span><span class="step" id="s3">Round 3</span></div>
+  <span class="timer" id="t">0:00</span>
+  <button id="tb">▶ Start timer</button>
+  <button class="p" id="chk">Check my matches</button>
+  <button id="hint">Hint (+1 free match)</button>
+  <button id="rst">Reset this round</button>
+</div>
+<div class="task" id="task"></div>
+<div id="msg"></div>
+<div class="tray" id="tray"></div>
+<div class="wrap"><div class="board" id="board"></div></div>
+<div id="win"></div>
+
+<script>
+const D=[
+[28.9,"Health","Health care programs and services, and occupational and consumer health & safety.",["Medicaid","Medicare","Children's Health Insurance Program (CHIP)","Centers for Disease Control & Prevention (CDC)"]],
+[16.1,"Social Security","Payments to retired and disabled individuals and managing the program",["Retired benefits","Disabled and unable to work benefits"]],
+[13.7,"National Defense","National defense, nuclear weapons activities, war costs, and international security assistance.",["Weapons acquisition","Military operations","Army National Guard"]],
+[12.1,"Interest on Debt","Annual interest paid on the national debt, net of interest income received by assets the federal government owns.",["Interest on federal debt"]],
+[7.3,"Unemployment & Labor","Income security programs, federal employee retirement and disability, and job training.",["Training and Employment Services","Food and Nutrition assistance","Unemployment Compensation"]],
+[5.0,"Running the Government","Legislative functions, federal employee salaries, tax refunds, maintaining federal properties and records",["Internal Revenue Service (IRS)","Treasury Department","National Archives","Office of Personnel Management"]],
+[4.0,"Veterans Benefits","Health care, housing, education and income security for veterans.",["Veterans Employment and Training","Medical and Prosthetic Research","VA hospitals"]],
+[2.1,"Education and Social Services","Elementary, secondary, higher and vocational education, employment training and social services for children and families",["Pell Grants","Federal Student Loans","Special Education","Title I grants","PBS"]],
+[1.9,"Transportation","Development and support of air, water, ground, and other transportation.",["Highway Traffic Safety Grants","Grants-in-aid for Airports","Aviation Security"]],
+[1.7,"Commerce and Banking","Various departments responsible for trade, record keeping, and banking",["FDIC Insurance","Patents and Trademarks","Federal Census","Federal Trade Commission (FTC)"]],
+[1.3,"Natural Resources and Environment","Natural resources and environment, conservation",["Rural Clean Water Program","Energy Efficiency and Renewable Energy","Environmental Protection Agency"]],
+[1.1,"Criminal Justice System Operations","Homeland security, IRS Enforcement, border patrol and immigration, DEA",["Homeland Security","Border security","Judge and US Attorney Salaries","Running Federal Prisons","Federal Bureau of Investigation (FBI)"]]
+];
+const TASK=[
+"<b>Round 1:</b> Match each <b>Tax Day Category</b> to its <b>Cents</b> so spending runs from greatest to least.",
+"<b>Round 2:</b> Match each <b>Description</b> to the right Cents and Category.",
+"<b>Round 3:</b> Match each well-known <b>Program</b> to the Category that funds it. Many programs can go in one box."];
+const DISC=[
+["What, if anything, surprises you about how the federal government spends taxpayer dollars?","If you were in charge, which categories would you prioritize more or less? Why?","What would you sacrifice for categories you decreased? What would you do with extra money in those you increased?","Would the ranking change much from year to year? Why or why not?"],
+["Are there any descriptions you don't quite understand? Explain to a partner.","How do you think the federal government decides how to allocate funds? Who makes the decisions?"],
+["Which programs have you or your family heard of or used?","How do people's values shape their opinions about spending priorities?"]];
+const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const items=[[],[],[]];
+D.forEach((d,i)=>{items[0].push({id:'a'+i,t:d[1],to:i});items[1].push({id:'b'+i,t:d[2],to:i});d[3].forEach((p,k)=>items[2].push({id:'c'+i+'_'+k,t:p,to:i}))});
+items.forEach(g=>g.forEach(o=>{o.at=null;o.lock=false}));
+let round=0,sel=null,secs=0,iv=null;
+const $=id=>document.getElementById(id);
+const all=o=>items.flat().find(x=>x.id===o);
+
+function chip(o,extra=''){const b=document.createElement('div');b.className='chip'+(o.lock?' lock':'')+(sel===o.id?' sel':'')+extra;b.textContent=o.t;
+ b.onclick=e=>{if(o.lock)return;
+  if(o.at!==null&&sel===null){e.stopPropagation();o.at=null;render();return}
+  if(o.at===null){sel=sel===o.id?null:o.id;render()}};
+ return b}
+
+function render(){
+ [1,2,3].forEach(n=>{const s=$('s'+n);s.className='step'+(round===n-1?' on':'')+(round>n-1?' done':'')});
+ $('task').innerHTML=TASK[round];
+ const tray=$('tray');tray.innerHTML='';
+ const cur=items[round];
+ cur.filter(o=>o.at===null).forEach(o=>tray.appendChild(chip(o)));
+ if(!tray.children.length)tray.innerHTML='<span style="color:var(--mu)">All cards placed. Press “Check my matches”.</span>';
+ const bd=$('board');bd.innerHTML='';
+ const h=document.createElement('div');h.className='row r'+(round+1);
+ h.innerHTML='<div class="hd">Cents</div><div class="hd">Category</div>'+(round>0?'<div class="hd">Description</div>':'')+(round>1?'<div class="hd">Programs</div>':'');
+ bd.appendChild(h);
+ D.forEach((d,i)=>{
+  const r=document.createElement('div');r.className='row r'+(round+1);
+  const c=document.createElement('div');c.className='cell cents';c.textContent=d[0].toFixed(1)+'¢';r.appendChild(c);
+  for(let g=0;g<=round;g++){
+   const cell=document.createElement('div');cell.className='cell'+(g===round?' act':'');
+   items[g].filter(o=>o.at===i).forEach(o=>cell.appendChild(chip(o,o.bad?' bad':'')));
+   if(g===round)cell.onclick=()=>place(i);
+   r.appendChild(cell)}
+  bd.appendChild(r)});
+}
+function place(i){
+ if(sel===null)return;const o=all(sel);const cap=round<2;
+ if(cap)items[round].forEach(x=>{if(x.at===i&&!x.lock)x.at=null});
+ o.at=i;sel=null;$('msg').textContent='';render()}
+
+$('chk').onclick=()=>{
+ const cur=items[round];let wrong=0,ok=0;
+ cur.forEach(o=>{if(o.lock)return;if(o.at===null)return;if(o.at===o.to){o.lock=true;ok++}else{o.at=null;wrong++}});
+ const left=cur.filter(o=>!o.lock).length;
+ if(!left){finish();return}
+ $('msg').style.color=wrong?'var(--bad)':'var(--ok)';
+ $('msg').textContent=(ok?`✅ ${ok} new correct match${ok>1?'es':''} locked in. `:'')+(wrong?`❌ ${wrong} not right yet; those went back to the tray.`:'')+(!ok&&!wrong?'Place some cards first!':'');
+ render()};
+$('hint').onclick=()=>{
+ const cur=items[round];const o=sh(cur.filter(x=>!x.lock))[0];if(!o)return;
+ o.at=o.to;o.lock=true;sel=null;
+ if(!cur.filter(x=>!x.lock).length)finish();else{$('msg').style.color='var(--ok)';$('msg').textContent='💡 One match placed for you.';render()}};
+$('rst').onclick=()=>{items[round].forEach(o=>{if(!o.lock)o.at=null;});sel=null;$('msg').textContent='';render()};
+
+function finish(){
+ stop();render();
+ $('msg').style.color='var(--ok)';$('msg').textContent='🎉 Round '+(round+1)+' complete in '+fmt(secs)+'!';
+ const w=$('win');
+ w.innerHTML='<div class="win"><b>Discussion questions</b><ul>'+DISC[round].map(q=>'<li>'+q+'</li>').join('')+'</ul></div>';
+ const b=document.createElement('button');b.className='p';
+ b.textContent=round<2?'Start Round '+(round+2)+' →':'Play again ↻';
+ b.onclick=()=>{if(round<2){round++;secs=0;$('t').textContent='0:00';w.innerHTML='';$('msg').textContent='';render()}else location.reload()};
+ w.firstChild.appendChild(b);
+ ['chk','hint','rst'].forEach(x=>$(x).classList.add('hide'))
+ if(round<2)w.dataset.n=1}
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+function stop(){clearInterval(iv);iv=null;$('tb').textContent='▶ Start timer'}
+$('tb').onclick=()=>{if(iv){stop();return}iv=setInterval(()=>{secs++;$('t').textContent=fmt(secs)},1000);$('tb').textContent='⏸ Pause'};
+const _n=()=>{};
+// show check buttons again when a new round starts
+const obs=new MutationObserver(()=>{if(!$('win').innerHTML)['chk','hint','rst'].forEach(x=>$(x).classList.remove('hide'))});
+obs.observe($('win'),{childList:true});
+// shuffle tray order once per round via item order
+items.forEach((g,i)=>items[i]=sh(g));
+render();
+</script></body></html>
